@@ -1,0 +1,21 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1302
+
+Maximizes gVim window on startup.
+
+
+Reason:
+
+"simalt ~x" does not work in a Russian Win2000, although it did in WinME, with corresponding Russian letter instead of "x". Everything always works fullscreen on my computer, and Vim is the core part of my work, so I maximized its window by hands each time, and searched for an automated solution.
+
+
+Details:
+
+This can be done by a DLL, which must be called with libcallnr() function:
+
+    call libcallnr('maximize', 'Maximize', 1)
+
+It takes one numeric parameter: 1 means maximize the window and 0 restores it back. It returns 1 on success, 0 on fault.
+
+
+ZIP archive is 4.4 Kb.
+Source inside.
