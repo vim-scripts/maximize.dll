@@ -1,27 +1,77 @@
 /*
- * maximizing tool for Win32 gVim
+ * maximize.cpp
+ * maximizing tool for Win32 gVim - source
+ *
  * made by kAtremer <katremer@yandex.ru>
- * use MS Visual C++ 6.0
+ * Last changed: 2007 Oct 16
+ *
+ *
+ * COMPILATION
+ * use MS Visual C++ (tested with 6.0 and 2005 aka 8.0)
  * build with cl /LD maximize.cpp user32.lib kernel32.lib
- * call with libcallnr('Maximize', 'Maximize', 1)
- * or libcallnr('Maximize', 'Maximize', 0)
+ *
+ *
+ * USAGE
+ * call with libcallnr('maximize', 'Maximize', 1)
+ * or libcallnr('maximize', 'Maximize', 0)
  */
 
 #include <windows.h>
 
-#pragma comment(linker, "/merge:.rdata=.text")
-#pragma comment(linker, "/merge:.data=.text")
-#pragma comment(linker, "/merge:.reloc=.text")
-#pragma comment(linker, "/FILEALIGN:512 /IGNORE:4078")
-#pragma comment(linker, "/SECTION:.text,EWRX")
-#pragma comment(linker, "/NODEFAULTLIB")
+// so, we begin with no pragmas and a 28K DLL
+
+// then this comes in:
 #pragma comment(linker, "/ENTRY:DllMain")
-#pragma comment(linker, "/SUBSYSTEM:windows")
-#pragma comment(linker, "/STACK:65536,65536")
+// 20 KB
+// the option just points to a function to use as an entry point
+// instead of a regular startup that initializes
+// memory manager and a whole bunch of other stuff
+
+// it's strange it works, /NODEFAULTLIB is supposed to accompany it:
+//#pragma comment(linker, "/NODEFAULTLIB")
+// but it gives the same 20 KB
+// it seems that, for a DLL, /ENTRY is enough
+
+// then, we introduce the wonderful /FILEALIGN:
+#pragma comment(linker, "/FILEALIGN:512")
+// 4.5 KB
+// it tells the compiler to pack code and data tighter:
+// align on 512 Bytes instead of the default 4KB
+
+// there're also these babies, but dunno what they're for
+//#pragma comment(linker, "/ALIGN:512")
+//#pragma comment(linker, "/OPT:NOWIN98")
+// OPT:NOWIN98 seems to be undocumented,
+// "seems" because the info is from the TfrEs article:
+// I don't want to mess with big, rather big and very huge indeed MSDN
+
+// /IGNORE, like, disables a warning
+// dunno which 4078 is
+//#pragma comment(linker, "/IGNORE:4078")
+
+// these lines must merge several executable sections into one
+// but they give 6.0 KB DLL, 4.5 KB without them
+// don't know why, I'm not deep into PE file structure, especially DLLs
+// not even sure the resulting DLL will work everywhere
+//#pragma comment(linker, "/MERGE:.rdata=.text")
+//#pragma comment(linker, "/MERGE:.data=.text")
+//#pragma comment(linker, "/MERGE:.reloc=.text")
+//#pragma comment(linker, "/SECTION:.text,EWRX")
+
+// this tells the compiler to produce a Win32 executable
+// just changes several bits
+//#pragma comment(linker, "/SUBSYSTEM:console")
+
+// this may be needed for EXEs, DLL seems to work well without it
+//#pragma comment(linker, "/STACK:65536,65536")
 
 BOOL APIENTRY DllMain(HANDLE hModule, DWORD reason, LPVOID lpReserved) {
 	return TRUE;
 }
+
+#define VIMCLASSNAMEBUFSIZE 4
+const char vimclassname[]="Vim";
+char vimclassnamebuf[VIMCLASSNAMEBUFSIZE];
 
 BOOL CALLBACK EnumThreadWndProc(HWND hwnd, LPARAM lParam) {
 	HWND* vimwin=(HWND*)lParam;
@@ -29,8 +79,19 @@ BOOL CALLBACK EnumThreadWndProc(HWND hwnd, LPARAM lParam) {
 		*vimwin=NULL;
 		return TRUE;
 	} else {
-		*vimwin=hwnd;
-		return FALSE;
+		if (GetClassName(hwnd, vimclassnamebuf, VIMCLASSNAMEBUFSIZE)==0) {
+			*vimwin=NULL;
+			return TRUE;
+		} else {
+			for (int i=0; i<VIMCLASSNAMEBUFSIZE; i++) {
+				if (vimclassnamebuf[i]!=vimclassname[i]) {
+					*vimwin=NULL;
+					return TRUE;
+				}
+			}
+			*vimwin=hwnd;
+			return FALSE;
+		}
 	}
 }
 
@@ -48,7 +109,7 @@ extern "C" __declspec(dllexport) LONG Maximize(LONG param) {
 
 }
 
-char hhgttg[]=
+const char hhgttg[]=
 "\x19\x3e\x66\x66\x5b\x17\x58\x5d\x6b\x5c\x69\x65\x66\x66\x65\x17\x59\x66"
 "\x70\x6a\x25\x19\x01\x4b\x5f\x5c\x17\x6d\x66\x60\x5a\x5c\x17\x6e\x58\x6a"
 "\x17\x66\x5b\x5b\x63\x70\x17\x5d\x58\x64\x60\x63\x60\x58\x69\x23\x17\x59"
